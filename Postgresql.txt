@@ -1,0 +1,138 @@
+DROP TABLE Model CASCADE;
+CREATE TABLE Model (
+    Id UUID PRIMARY KEY,
+    Name VARCHAR(255),
+    ProductionYear INT
+);
+
+DROP TABLE Make CASCADE;
+CREATE TABLE Make (
+    Id UUID PRIMARY KEY,
+    Name VARCHAR(255),
+    CountryOfOrigin VARCHAR(255)
+);
+
+DROP TABLE Location CASCADE;
+CREATE TABLE Location (
+    Id UUID PRIMARY KEY,
+    City VARCHAR(255)
+);
+
+DROP TABLE Vehicle CASCADE;
+CREATE TABLE Vehicle (
+    Id UUID PRIMARY KEY,
+    MakeId UUID,
+    ModelId UUID,
+    LocationId UUID,
+	Name VARCHAR(255),
+	CONSTRAINT FK_Vehicle_Make_Id FOREIGN KEY (MakeId) REFERENCES Make(Id),
+	CONSTRAINT FK_Vehicle_Model_Id FOREIGN KEY (ModelId) REFERENCES Model(Id),
+	CONSTRAINT FK_Vehicle_Location_Id FOREIGN KEY (LocationId) REFERENCES Location(Id)
+);
+
+DROP TABLE Registration CASCADE;
+CREATE TABLE Registration (
+    VehicleId UUID,
+    RegistrationNumber VARCHAR(255),
+    RegistrationDate DATE,
+	CONSTRAINT FK_Registration_Vehicle_Id FOREIGN KEY (VehicleId) REFERENCES Vehicle(Id)
+);
+
+DROP TABLE Employee CASCADE;
+CREATE TABLE Employee (
+    Id UUID PRIMARY KEY,
+    FirstName VARCHAR(255),
+    LastName VARCHAR(255),
+    Email VARCHAR(255),
+    PhoneNumber VARCHAR(255)
+);
+
+DROP TABLE Customer CASCADE;
+CREATE TABLE Customer (
+    Id UUID PRIMARY KEY,
+    LastName VARCHAR(255)
+);
+
+ALTER TABLE Customer ADD COLUMN FirstName VARCHAR(255);
+
+DROP TABLE Rental CASCADE;
+CREATE TABLE Rental (
+    Id UUID PRIMARY KEY,
+    StartDate DATE,
+    EndDate DATE,
+    VehicleId UUID,
+    CustomerId UUID,
+    EmployeeId UUID,
+	CONSTRAINT FK_Rental_Vehicle_Id FOREIGN KEY (VehicleId) REFERENCES Vehicle(Id),
+	CONSTRAINT FK_Rental_Customer_Id FOREIGN KEY (CustomerId) REFERENCES Customer(Id),
+	CONSTRAINT FK_Rental_Employee_Id FOREIGN KEY (EmployeeId) REFERENCES Employee(Id)
+);
+
+DROP TABLE Payment CASCADE;
+CREATE TABLE Payment (
+    RentalId UUID,
+    Payday DATE,
+    Amount DECIMAL(10, 2),
+	CONSTRAINT FK_Payment_Rental_Id FOREIGN KEY (RentalId) REFERENCES Rental(Id)
+);
+
+
+INSERT INTO Model (Id, Name, ProductionYear)
+VALUES
+    ('7baf0563-d015-4c8a-a868-a542a5127e7d', 'Passat', 2000),
+    ('44d854f2-7c91-4c54-a540-9b13e75a2b2c', 'A4', 2014);
+
+INSERT INTO Make (Id, Name, CountryOfOrigin)
+VALUES
+    ('7c56efc3-4b01-4e29-96d1-77a55af84b5b', 'Volkswagen', 'Germany'),
+    ('e8db7f7b-9ed0-4479-9d9d-b0796c1e77e0', 'Audi', 'Germany');
+
+INSERT INTO Location (Id, City)
+VALUES
+    ('3e3e5c63-92a0-42e4-9de6-1a53c5e8278e', 'Zagreb'),
+    ('92a4ce82-8720-4d8a-9d81-457166d67eb1', 'Nasice');
+
+INSERT INTO Vehicle (Id, MakeId, ModelId, LocationId, Name)
+VALUES
+    ('8a142f3e-4e95-4b0a-a9c3-f90656c4f8ad', '7c56efc3-4b01-4e29-96d1-77a55af84b5b', '7baf0563-d015-4c8a-a868-a542a5127e7d', '3e3e5c63-92a0-42e4-9de6-1a53c5e8278e', 'Passat'),
+    ('e1b7f439-6461-41f4-aeae-3f7e22de9b52', 'e8db7f7b-9ed0-4479-9d9d-b0796c1e77e0', '44d854f2-7c91-4c54-a540-9b13e75a2b2c', '92a4ce82-8720-4d8a-9d81-457166d67eb1', 'A4');
+
+INSERT INTO Registration (VehicleId, RegistrationNumber, RegistrationDate)
+VALUES
+    ('8a142f3e-4e95-4b0a-a9c3-f90656c4f8ad', 'ABC123', '2021-01-01'),
+    ('e1b7f439-6461-41f4-aeae-3f7e22de9b52', 'XYZ789', '2022-02-02');
+
+INSERT INTO Employee (Id, FirstName, LastName, Email, PhoneNumber)
+VALUES
+    ('1b696f32-135c-4c6a-b7a2-dfc2d3e3fb1d', 'John', 'Doe', 'john.doe@example.com', '1234567890'),
+    ('c0e5047a-9a5f-4e56-bfe5-7af6cb9d3764', 'Jane', 'Smith', 'jane.smith@example.com', '9876543210');
+
+INSERT INTO Customer (Id, FirstName, LastName)
+VALUES
+    ('aa578541-46c2-45d6-8dd1-65c2df494cb1', 'Michael', 'Johnson'),
+    ('1f3b9353-3e86-4e7b-b9ea-76d6fc5d1be4', 'Emily', 'Davis');
+
+INSERT INTO Rental (Id, StartDate, EndDate, VehicleId, CustomerId, EmployeeId)
+VALUES
+    ('f04fd405-9375-4af9-aa15-2efb38a33c36', '2021-06-01', '2021-06-07', '8a142f3e-4e95-4b0a-a9c3-f90656c4f8ad', 'aa578541-46c2-45d6-8dd1-65c2df494cb1', '1b696f32-135c-4c6a-b7a2-dfc2d3e3fb1d'),
+    ('e98e1a34-cc06-4e0b-b9b6-cc31ff7ad1c7', '2022-03-10', '2022-03-15', 'e1b7f439-6461-41f4-aeae-3f7e22de9b52', '1f3b9353-3e86-4e7b-b9ea-76d6fc5d1be4', 'c0e5047a-9a5f-4e56-bfe5-7af6cb9d3764');
+
+INSERT INTO Payment (RentalId, Payday, Amount)
+VALUES
+    ('f04fd405-9375-4af9-aa15-2efb38a33c36', '2021-06-07', 250.00),
+    ('e98e1a34-cc06-4e0b-b9b6-cc31ff7ad1c7', '2022-03-15', 350.00);
+
+
+UPDATE Model
+SET Name='Passat CC'
+WHERE Model.Id= '7baf0563-d015-4c8a-a868-a542a5127e7d';
+
+
+
+SELECT Make.Name, Vehicle.Name
+FROM Make
+INNER JOIN  Vehicle ON Make.Id = Vehicle.MakeId;
+
+SELECT Rental.StartDate, Payment.Payday
+FROM Rental
+RIGHT JOIN Payment ON Rental.Id = Payment.RentalId;
