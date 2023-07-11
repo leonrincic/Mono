@@ -1,6 +1,4 @@
 ﻿using System;
-using ExampleWebApi.Models;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -9,6 +7,9 @@ using System.Threading;
 using System.Web.Http;
 using Npgsql;
 using System.Data.SqlClient;
+using Example.Model;
+using Example.Service;
+using System.Threading.Tasks;
 
 namespace ExampleWebApi.Controllers
 {
@@ -18,37 +19,20 @@ namespace ExampleWebApi.Controllers
 
 
         [HttpPost]
-        public HttpResponseMessage PostEmployee(Employee employee)
+        public async Task<HttpResponseMessage> PostEmployee(Employee employee)
         {
             try
             {
-                using (var connection = new NpgsqlConnection(connectionString))
+                EmployeeService service = new EmployeeService();
+                bool newEmployee = await service.PostEmployeeAsync(employee);
+                if (newEmployee == true)
                 {
-                    var query = "INSERT INTO employee (Id, FirstName, LastName, Email, PhoneNumber) VALUES (@Id , @FirstName, @LastName, @Email, @PhoneNumber)";
+                    return Request.CreateResponse(HttpStatusCode.OK, "Employee created successfully.");
 
-                    connection.Open();
-
-                    using (var command = new NpgsqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("Id", Guid.NewGuid());
-                        command.Parameters.AddWithValue("FirstName", employee.FirstName);
-                        command.Parameters.AddWithValue("LastName", employee.LastName);
-                        command.Parameters.AddWithValue("Email", employee.Email);
-                        command.Parameters.AddWithValue("PhoneNumber", employee.PhoneNumber);
-
-                        int numberOfRowsAffected = command.ExecuteNonQuery();
-
-                        if (numberOfRowsAffected > 0)
-                        {
-                            return Request.CreateResponse(HttpStatusCode.OK, "Employee created successfully.");
-                        }
-                        else
-                        {
-                            return Request.CreateResponse(HttpStatusCode.NotFound, "There was an error while trying to create employee");
-                        }
-
-                    }
                 }
+                return Request.CreateResponse(HttpStatusCode.NotFound, "There was an error while trying to create employee");
+                    
+                
 
             }
             catch (Exception ex)
@@ -58,38 +42,13 @@ namespace ExampleWebApi.Controllers
         }
 
         [HttpGet]
-        public HttpResponseMessage GetEmployees()
+        public async Task<HttpResponseMessage> GetEmployees()
         {
-            List<Employee> employees = new List<Employee>();
+            
             try
             {
-                using (NpgsqlConnection connection = new NpgsqlConnection(connectionString))
-                {
-                    var query = "SELECT * FROM employee";
-
-                    connection.Open();
-
-                    using (var command = new NpgsqlCommand(query, connection))
-                    {
-                        using (var reader = command.ExecuteReader())
-                        {
-                            if (reader.HasRows)
-                            {
-                                while (reader.Read())
-                                {
-                                    Guid id = reader.GetGuid(0);
-                                    string firstName = reader.GetString(1);
-                                    string lastName = reader.GetString(2);
-                                    string email = reader.GetString(3);
-                                    string phoneNumber = reader.GetString(4);
-
-                                    Employee employee = new Employee(id, firstName, lastName, email, phoneNumber);
-                                    employees.Add(employee);
-                                }
-                            }
-                        }
-                    }
-                }
+                EmployeeService service = new EmployeeService();
+                List<Employee> employees = await service.GetEmployeesAsync();
                 return Request.CreateResponse(HttpStatusCode.OK, employees);
             }
             catch (Exception ex)
@@ -99,76 +58,63 @@ namespace ExampleWebApi.Controllers
         }
 
         [HttpGet]
-        public HttpResponseMessage GetEmployeeById(Guid id)
+        public async Task<HttpResponseMessage> GetEmployeeById(Guid id)
         {
             try
-            {
-                using (NpgsqlConnection connection = new NpgsqlConnection(connectionString))
+            {  
+                EmployeeService service = new EmployeeService();
+                Employee employee = await service.GetEmployeeByIdAsync(id);
+                if(employee != null)
                 {
-                    var query = "SELECT * FROM employee WHERE Id=@Id";
-                   
-                    connection.Open();
-                    
-                    using(var command = new NpgsqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("Id", id);
-                        using (var reader = command.ExecuteReader())
-                        {
-                            if (reader.Read())
-                            {
-                                string firstName = reader.GetString(1);
-                                string lastName = reader.GetString(2);
-                                string email = reader.GetString(3);
-                                string phoneNumber = reader.GetString(4);
-
-                                Employee employee = new Employee(id, firstName,lastName,email, phoneNumber);
-                                return Request.CreateResponse(HttpStatusCode.OK, employee);
-                            }
-                            else
-                            {
-                                return Request.CreateResponse(HttpStatusCode.NotFound, "Employee not found.");
-                            }
-                        }
-                    }
+                    return Request.CreateResponse(HttpStatusCode.OK, employee);
                 }
+                return Request.CreateErrorResponse(HttpStatusCode.NotFound, "Employee not found.");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return Request.CreateResponse(HttpStatusCode.InternalServerError, "An error occured while retrieving the employee.");
             }
         }
 
         [HttpPut]
-        public HttpResponseMessage UpdateEmployee(Guid id, Employee updatedEmployee)
+        public async Task<HttpResponseMessage> UpdateEmployee(Guid id, Employee updatedEmployee)
         {
             try
             {
-                using (NpgsqlConnection connection = new NpgsqlConnection(connectionString))
+                EmployeeService service = new EmployeeService();
+                Employee existingEmployee = await service.GetEmployeeByIdAsync(id);
+                if(existingEmployee == null)
                 {
-                    var query = "UPDATE employee SET FirstName = @FirstName, LastName = @LastName, Email = @Email, PhoneNumber = @PhoneNumber WHERE Id = @Id";
-                    
-                    connection.Open();
-                   
-                    using (var command = new NpgsqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("Id", id);
-                        command.Parameters.AddWithValue("FirstName", updatedEmployee.FirstName);
-                        command.Parameters.AddWithValue("LastName", updatedEmployee.LastName);
-                        command.Parameters.AddWithValue("Email", updatedEmployee.Email);
-                        command.Parameters.AddWithValue("PhoneNumber", updatedEmployee.PhoneNumber);
-
-                        int numberOfRowsAffected = command.ExecuteNonQuery();
-
-                        if (numberOfRowsAffected > 0)
-                        {
-                            return Request.CreateResponse(HttpStatusCode.OK, "Employee updated successfully.");
-                        }
-                        else
-                        {
-                            return Request.CreateResponse(HttpStatusCode.NotFound, "Employee not found.");
-                        }
-                    }
+                    return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Employee not found.");
                 }
+                if(updatedEmployee.FirstName == null)
+                {
+                    updatedEmployee.FirstName = existingEmployee.FirstName;
+                }
+                if (updatedEmployee.LastName == null)
+                {
+                    updatedEmployee.LastName = existingEmployee.LastName;
+                }
+                if (updatedEmployee.Email == null) { 
+                    updatedEmployee.Email = existingEmployee.Email;
+                }
+                if(updatedEmployee.PhoneNumber == null)
+                {
+                    updatedEmployee.PhoneNumber = existingEmployee.PhoneNumber;
+                }
+
+
+                
+                
+                bool isUpdated = await service.UpdateEmployeeAsync(existingEmployee.Id, updatedEmployee);
+                if(isUpdated)
+                {
+                    return Request.CreateResponse(HttpStatusCode.OK, "Employee has been updated.");
+                }
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Bad request");
+
+
+
             }
             catch (Exception ex)
             {
@@ -176,32 +122,18 @@ namespace ExampleWebApi.Controllers
             }
         }
         [HttpDelete]
-        public HttpResponseMessage DeleteEmployee(Guid id)
+        public async Task<HttpResponseMessage> DeleteEmployee(Guid id)
         {
             try
             {
-                using (NpgsqlConnection connection = new NpgsqlConnection(connectionString))
+                EmployeeService service = new EmployeeService();
+                bool isDeleted = await service.DeleteEmployeeAsync(id);
+                if(isDeleted)
                 {
-                    var query = "DELETE FROM employee WHERE Id = @Id";
-
-                    connection.Open();
-
-                    using (var command = new NpgsqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("Id", id);
-
-                        int numberOfRowsAffected = command.ExecuteNonQuery();
-
-                        if (numberOfRowsAffected > 0)
-                        {
-                            return Request.CreateResponse(HttpStatusCode.OK, "Employee deleted successfully.");
-                        }
-                        else
-                        {
-                            return Request.CreateResponse(HttpStatusCode.NotFound, "Employee not found.");
-                        }
-                    }
+                    return Request.CreateResponse(HttpStatusCode.OK, "Employee has been deleted.");
                 }
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Bad request");
+
             }
             catch (Exception ex)
             {
